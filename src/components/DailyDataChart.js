@@ -28,6 +28,18 @@ ChartJS.register(
 );
 
 const DailyDataChart = ({ data, regionName }) => {
+  // Ensure data exists and is an array
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return (
+      <div className="daily-data-chart">
+        <div className="no-data">
+          <h3>No data available for {regionName}</h3>
+          <p>Please check if the sensor is active and sending data.</p>
+        </div>
+      </div>
+    );
+  }
+
   // Process data for the last 24 hours
   const last24Hours = data.slice(-24);
   
@@ -43,7 +55,7 @@ const DailyDataChart = ({ data, regionName }) => {
     datasets: [
       {
         label: 'Air Quality Index (AQI)',
-        data: last24Hours.map(item => item.aqi),
+        data: last24Hours.map(item => item.aqi || item.pollution_level || 0),
         borderColor: 'rgb(75, 192, 192)',
         backgroundColor: 'rgba(75, 192, 192, 0.2)',
         borderWidth: 3,
@@ -58,7 +70,7 @@ const DailyDataChart = ({ data, regionName }) => {
       },
       {
         label: 'Temperature (°C)',
-        data: last24Hours.map(item => item.temperature),
+        data: last24Hours.map(item => item.temperature || 0),
         borderColor: 'rgb(255, 99, 132)',
         backgroundColor: 'rgba(255, 99, 132, 0.1)',
         borderWidth: 2,
@@ -73,7 +85,7 @@ const DailyDataChart = ({ data, regionName }) => {
       },
       {
         label: 'Humidity (%)',
-        data: last24Hours.map(item => item.humidity),
+        data: last24Hours.map(item => item.humidity || 0),
         borderColor: 'rgb(54, 162, 235)',
         backgroundColor: 'rgba(54, 162, 235, 0.1)',
         borderWidth: 2,
@@ -185,7 +197,7 @@ const DailyDataChart = ({ data, regionName }) => {
           color: 'rgba(0, 0, 0, 0.1)'
         },
         min: 0,
-        max: Math.max(...last24Hours.map(item => item.aqi)) + 20
+        max: Math.max(...last24Hours.map(item => item.aqi || item.pollution_level || 0)) + 20
       },
       y1: {
         type: 'linear',
@@ -202,8 +214,8 @@ const DailyDataChart = ({ data, regionName }) => {
         grid: {
           drawOnChartArea: false,
         },
-        min: Math.min(...last24Hours.map(item => item.temperature)) - 5,
-        max: Math.max(...last24Hours.map(item => item.temperature)) + 5
+        min: Math.min(...last24Hours.map(item => item.temperature || 0)) - 5,
+        max: Math.max(...last24Hours.map(item => item.temperature || 0)) + 5
       },
       y2: {
         type: 'linear',
@@ -259,28 +271,26 @@ const DailyDataChart = ({ data, regionName }) => {
   };
 
   const getAQIStatus = (aqi) => {
-    if (aqi <= 50) return { status: 'Good', color: '#00E400', bgColor: '#E8F5E8' };
-    if (aqi <= 100) return { status: 'Moderate', color: '#FFFF00', bgColor: '#FFFFF0' };
-    if (aqi <= 150) return { status: 'Unhealthy for Sensitive Groups', color: '#FF7E00', bgColor: '#FFF4E6' };
-    if (aqi <= 200) return { status: 'Unhealthy', color: '#FF0000', bgColor: '#FFE6E6' };
-    if (aqi <= 300) return { status: 'Very Unhealthy', color: '#8F3F97', bgColor: '#F0E6F0' };
-    return { status: 'Hazardous', color: '#7E0023', bgColor: '#F0E6E6' };
+    if (aqi <= 110) return { status: 'Safe', color: '#00E400', bgColor: '#E8F5E8' };
+    if (aqi <= 200) return { status: 'Moderate', color: '#FFFF00', bgColor: '#FFFFF0' };
+    return { status: 'Bad', color: '#FF0000', bgColor: '#FFE6E6' };
   };
 
   const currentData = last24Hours[last24Hours.length - 1];
-  const aqiStatus = getAQIStatus(currentData?.aqi);
+  const currentAQI = currentData?.aqi || currentData?.pollution_level || 0;
+  const aqiStatus = getAQIStatus(currentAQI);
 
   // Calculate averages
-  const avgAQI = Math.round(last24Hours.reduce((sum, item) => sum + item.aqi, 0) / last24Hours.length);
-  const avgTemp = Math.round(last24Hours.reduce((sum, item) => sum + item.temperature, 0) / last24Hours.length);
-  const avgHumidity = Math.round(last24Hours.reduce((sum, item) => sum + item.humidity, 0) / last24Hours.length);
+  const avgAQI = Math.round(last24Hours.reduce((sum, item) => sum + (item.aqi || item.pollution_level || 0), 0) / last24Hours.length);
+  const avgTemp = Math.round(last24Hours.reduce((sum, item) => sum + (item.temperature || 0), 0) / last24Hours.length);
+  const avgHumidity = Math.round(last24Hours.reduce((sum, item) => sum + (item.humidity || 0), 0) / last24Hours.length);
 
   // Create doughnut chart data for current status
   const doughnutData = {
     labels: ['Current AQI', 'Remaining'],
     datasets: [
       {
-        data: [currentData?.aqi || 0, Math.max(0, 500 - (currentData?.aqi || 0))],
+        data: [currentAQI, Math.max(0, 500 - currentAQI)],
         backgroundColor: [
           aqiStatus.color,
           '#f0f0f0'
@@ -308,7 +318,7 @@ const DailyDataChart = ({ data, regionName }) => {
           <div className="status-details">
             <div className="aqi-display">
               <span className="aqi-value" style={{ color: aqiStatus.color }}>
-                {currentData?.aqi || 0}
+                {currentAQI}
               </span>
               <span className="aqi-label">AQI</span>
             </div>
@@ -349,19 +359,19 @@ const DailyDataChart = ({ data, regionName }) => {
         <div className="summary-grid">
           <div className="summary-item">
             <span className="label">Peak AQI:</span>
-            <span className="value">{Math.max(...last24Hours.map(item => item.aqi))}</span>
+            <span className="value">{Math.max(...last24Hours.map(item => item.aqi || item.pollution_level || 0))}</span>
           </div>
           <div className="summary-item">
             <span className="label">Lowest AQI:</span>
-            <span className="value">{Math.min(...last24Hours.map(item => item.aqi))}</span>
+            <span className="value">{Math.min(...last24Hours.map(item => item.aqi || item.pollution_level || 0))}</span>
           </div>
           <div className="summary-item">
             <span className="label">Max Temperature:</span>
-            <span className="value">{Math.max(...last24Hours.map(item => item.temperature))}°C</span>
+            <span className="value">{Math.max(...last24Hours.map(item => item.temperature || 0))}°C</span>
           </div>
           <div className="summary-item">
             <span className="label">Min Temperature:</span>
-            <span className="value">{Math.min(...last24Hours.map(item => item.temperature))}°C</span>
+            <span className="value">{Math.min(...last24Hours.map(item => item.temperature || 0))}°C</span>
           </div>
         </div>
       </div>

@@ -773,9 +773,10 @@ section h2 {
 /* Chart Styles */
 .chart-container {
   background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin: 20px 0;
 }
 
 .aqi-status {
@@ -1192,4 +1193,43 @@ section h2 {
   .score-emoji {
     font-size: 3rem;
   }
+}
+
+/* No Data State */
+.no-data {
+  text-align: center;
+  padding: 50px 20px;
+  background: #f8f9fa;
+  border-radius: 15px;
+  border: 2px dashed #dee2e6;
+  margin: 20px 0;
+}
+
+.no-data h3 {
+  color: #6c757d;
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+}
+
+.no-data p {
+  color: #868e96;
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Chart Container Improvements */
+.chart-container {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin: 20px 0;
+}
+
+.daily-data-chart {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin: 20px 0;
 } 

@@ -24,6 +24,18 @@ ChartJS.register(
 );
 
 const AirQualityChart = ({ data, regionName }) => {
+  // Ensure data exists and is an array
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return (
+      <div className="chart-container">
+        <div className="no-data">
+          <h3>No data available for {regionName}</h3>
+          <p>Please check if the sensor is active and sending data.</p>
+        </div>
+      </div>
+    );
+  }
+
   const chartData = {
     labels: data.map(item => {
       const date = new Date(item.timestamp);
@@ -36,7 +48,7 @@ const AirQualityChart = ({ data, regionName }) => {
     datasets: [
       {
         label: 'Air Quality Index (AQI)',
-        data: data.map(item => item.aqi),
+        data: data.map(item => item.aqi || item.pollution_level || 0),
         borderColor: 'rgb(75, 192, 192)',
         backgroundColor: 'rgba(75, 192, 192, 0.2)',
         borderWidth: 3,
@@ -50,7 +62,7 @@ const AirQualityChart = ({ data, regionName }) => {
       },
       {
         label: 'Temperature (°C)',
-        data: data.map(item => item.temperature),
+        data: data.map(item => item.temperature || 0),
         borderColor: 'rgb(255, 99, 132)',
         backgroundColor: 'rgba(255, 99, 132, 0.1)',
         borderWidth: 2,
@@ -136,7 +148,7 @@ const AirQualityChart = ({ data, regionName }) => {
           color: 'rgba(0, 0, 0, 0.1)'
         },
         min: 0,
-        max: Math.max(...data.map(item => item.aqi)) + 20
+        max: Math.max(...data.map(item => item.aqi || item.pollution_level || 0)) + 20
       },
       y1: {
         type: 'linear',
@@ -153,8 +165,8 @@ const AirQualityChart = ({ data, regionName }) => {
         grid: {
           drawOnChartArea: false,
         },
-        min: Math.min(...data.map(item => item.temperature)) - 5,
-        max: Math.max(...data.map(item => item.temperature)) + 5
+        min: Math.min(...data.map(item => item.temperature || 0)) - 5,
+        max: Math.max(...data.map(item => item.temperature || 0)) + 5
       }
     },
     interaction: {
@@ -165,15 +177,12 @@ const AirQualityChart = ({ data, regionName }) => {
   };
 
   const getAQIStatus = (aqi) => {
-    if (aqi <= 50) return { status: 'Good', color: '#00E400' };
-    if (aqi <= 100) return { status: 'Moderate', color: '#FFFF00' };
-    if (aqi <= 150) return { status: 'Unhealthy for Sensitive Groups', color: '#FF7E00' };
-    if (aqi <= 200) return { status: 'Unhealthy', color: '#FF0000' };
-    if (aqi <= 300) return { status: 'Very Unhealthy', color: '#8F3F97' };
-    return { status: 'Hazardous', color: '#7E0023' };
+    if (aqi <= 110) return { status: 'Safe', color: '#00E400' };
+    if (aqi <= 200) return { status: 'Moderate', color: '#FFFF00' };
+    return { status: 'Bad', color: '#FF0000' };
   };
 
-  const currentAQI = data[data.length - 1]?.aqi;
+  const currentAQI = data[data.length - 1]?.aqi || data[data.length - 1]?.pollution_level || 0;
   const aqiStatus = getAQIStatus(currentAQI);
 
   return (
