@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -10,9 +10,12 @@ import {
   Tooltip,
   Legend,
   Filler,
-  ArcElement
+  ArcElement,
+  RadialLinearScale,
+  TimeScale
 } from 'chart.js';
-import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import { Line, Bar, Doughnut, Radar, Scatter } from 'react-chartjs-2';
+import 'chartjs-adapter-date-fns';
 
 ChartJS.register(
   CategoryScale,
@@ -24,10 +27,15 @@ ChartJS.register(
   Tooltip,
   Legend,
   Filler,
-  ArcElement
+  ArcElement,
+  RadialLinearScale,
+  TimeScale
 );
 
 const DailyDataChart = ({ data, regionName }) => {
+  const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
+  const [selectedChart, setSelectedChart] = useState('all');
+
   // Ensure data exists and is an array
   if (!data || !Array.isArray(data) || data.length === 0) {
     return (
@@ -40,43 +48,80 @@ const DailyDataChart = ({ data, regionName }) => {
     );
   }
 
-  // Process data for the last 24 hours
-  const last24Hours = data.slice(-24);
+  // Process data based on selected time range
+  const getFilteredData = () => {
+    switch (selectedTimeRange) {
+      case '6h':
+        return data.slice(-6);
+      case '12h':
+        return data.slice(-12);
+      case '24h':
+      default:
+        return data.slice(-24);
+      case '48h':
+        return data.slice(-48);
+      case '7d':
+        return data.slice(-168); // 7 days * 24 hours
+    }
+  };
+
+  const filteredData = getFilteredData();
   
-  const chartData = {
-    labels: last24Hours.map(item => {
-      const date = new Date(item.timestamp);
-      return date.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
+  // Create time labels
+  const timeLabels = filteredData.map(item => {
+    const date = new Date(item.timestamp);
+    if (selectedTimeRange === '7d') {
+      return date.toLocaleDateString('en-US', { 
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
         hour12: true 
       });
-    }),
+    }
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  });
+
+  // Extract data series
+  const aqiData = filteredData.map(item => item.aqi || item.pollution_level || 0);
+  const temperatureData = filteredData.map(item => item.temperature || 0);
+  const humidityData = filteredData.map(item => item.humidity || 0);
+  const pm25Data = filteredData.map(item => item.pm25 || 0);
+  const pm10Data = filteredData.map(item => item.pm10 || 0);
+  const co2Data = filteredData.map(item => item.co2 || 0);
+  const vocData = filteredData.map(item => item.voc || 0);
+
+  // Main line chart configuration
+  const lineChartData = {
+    labels: timeLabels,
     datasets: [
       {
-        label: 'Air Quality Index (AQI)',
-        data: last24Hours.map(item => item.aqi || item.pollution_level || 0),
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        label: 'Air Quality Index',
+        data: aqiData,
+        borderColor: '#FF6B6B',
+        backgroundColor: 'rgba(255, 107, 107, 0.1)',
         borderWidth: 3,
         fill: true,
         tension: 0.4,
-        pointBackgroundColor: 'rgb(75, 192, 192)',
+        pointBackgroundColor: '#FF6B6B',
         pointBorderColor: '#fff',
         pointBorderWidth: 2,
-        pointRadius: 6,
+        pointRadius: 5,
         pointHoverRadius: 8,
         yAxisID: 'y'
       },
       {
         label: 'Temperature (°C)',
-        data: last24Hours.map(item => item.temperature || 0),
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+        data: temperatureData,
+        borderColor: '#4ECDC4',
+        backgroundColor: 'rgba(78, 205, 196, 0.1)',
         borderWidth: 2,
         fill: false,
         tension: 0.4,
-        pointBackgroundColor: 'rgb(255, 99, 132)',
+        pointBackgroundColor: '#4ECDC4',
         pointBorderColor: '#fff',
         pointBorderWidth: 2,
         pointRadius: 4,
@@ -85,13 +130,13 @@ const DailyDataChart = ({ data, regionName }) => {
       },
       {
         label: 'Humidity (%)',
-        data: last24Hours.map(item => item.humidity || 0),
-        borderColor: 'rgb(54, 162, 235)',
-        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+        data: humidityData,
+        borderColor: '#45B7D1',
+        backgroundColor: 'rgba(69, 183, 209, 0.1)',
         borderWidth: 2,
         fill: false,
         tension: 0.4,
-        pointBackgroundColor: 'rgb(54, 162, 235)',
+        pointBackgroundColor: '#45B7D1',
         pointBorderColor: '#fff',
         pointBorderWidth: 2,
         pointRadius: 4,
@@ -101,33 +146,129 @@ const DailyDataChart = ({ data, regionName }) => {
     ]
   };
 
-  const barData = {
-    labels: last24Hours.map(item => {
-      const date = new Date(item.timestamp);
-      return date.toLocaleTimeString('en-US', { 
-        hour: '2-digit',
-        hour12: true 
-      });
-    }),
+  // Bar chart for particulate matter
+  const barChartData = {
+    labels: timeLabels,
     datasets: [
       {
         label: 'PM2.5 (μg/m³)',
-        data: last24Hours.map(item => item.pm25 || 0),
-        backgroundColor: 'rgba(255, 159, 64, 0.8)',
-        borderColor: 'rgb(255, 159, 64)',
-        borderWidth: 1
+        data: pm25Data,
+        backgroundColor: 'rgba(255, 193, 7, 0.8)',
+        borderColor: '#FFC107',
+        borderWidth: 1,
+        borderRadius: 4
       },
       {
         label: 'PM10 (μg/m³)',
-        data: last24Hours.map(item => item.pm10 || 0),
-        backgroundColor: 'rgba(153, 102, 255, 0.8)',
-        borderColor: 'rgb(153, 102, 255)',
-        borderWidth: 1
+        data: pm10Data,
+        backgroundColor: 'rgba(156, 39, 176, 0.8)',
+        borderColor: '#9C27B0',
+        borderWidth: 1,
+        borderRadius: 4
       }
     ]
   };
 
-  const options = {
+  // Radar chart for environmental overview
+  const radarChartData = {
+    labels: ['AQI', 'Temperature', 'Humidity', 'PM2.5', 'PM10', 'CO2', 'VOC'],
+    datasets: [
+      {
+        label: 'Current Values',
+        data: [
+          aqiData[aqiData.length - 1] || 0,
+          temperatureData[temperatureData.length - 1] || 0,
+          humidityData[humidityData.length - 1] || 0,
+          pm25Data[pm25Data.length - 1] || 0,
+          pm10Data[pm10Data.length - 1] || 0,
+          co2Data[co2Data.length - 1] || 0,
+          vocData[vocData.length - 1] || 0
+        ],
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        borderColor: 'rgb(54, 162, 235)',
+        borderWidth: 2,
+        pointBackgroundColor: 'rgb(54, 162, 235)',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgb(54, 162, 235)'
+      }
+    ]
+  };
+
+  // Scatter plot for correlation analysis
+  const scatterChartData = {
+    datasets: [
+      {
+        label: 'AQI vs Temperature',
+        data: aqiData.map((aqi, index) => ({
+          x: temperatureData[index] || 0,
+          y: aqi || 0
+        })),
+        backgroundColor: 'rgba(255, 107, 107, 0.6)',
+        borderColor: '#FF6B6B',
+        pointRadius: 6,
+        pointHoverRadius: 8
+      },
+      {
+        label: 'AQI vs Humidity',
+        data: aqiData.map((aqi, index) => ({
+          x: humidityData[index] || 0,
+          y: aqi || 0
+        })),
+        backgroundColor: 'rgba(69, 183, 209, 0.6)',
+        borderColor: '#45B7D1',
+        pointRadius: 6,
+        pointHoverRadius: 8
+      }
+    ]
+  };
+
+  // Heatmap-style data for hourly patterns
+  const createHourlyHeatmapData = () => {
+    const hourlyData = {};
+    filteredData.forEach(item => {
+      const hour = new Date(item.timestamp).getHours();
+      if (!hourlyData[hour]) {
+        hourlyData[hour] = [];
+      }
+      hourlyData[hour].push(item.aqi || item.pollution_level || 0);
+    });
+
+    const heatmapLabels = Object.keys(hourlyData).sort((a, b) => parseInt(a) - parseInt(b));
+    const heatmapData = heatmapLabels.map(hour => {
+      const values = hourlyData[hour];
+      return values.reduce((sum, val) => sum + val, 0) / values.length;
+    });
+
+    return {
+      labels: heatmapLabels.map(hour => `${hour}:00`),
+      datasets: [{
+        label: 'Average AQI by Hour',
+        data: heatmapData,
+        backgroundColor: heatmapData.map(aqi => {
+          if (aqi <= 50) return 'rgba(0, 228, 0, 0.8)';
+          if (aqi <= 100) return 'rgba(255, 255, 0, 0.8)';
+          if (aqi <= 150) return 'rgba(255, 126, 0, 0.8)';
+          if (aqi <= 200) return 'rgba(255, 0, 0, 0.8)';
+          return 'rgba(143, 63, 151, 0.8)';
+        }),
+        borderColor: heatmapData.map(aqi => {
+          if (aqi <= 50) return '#00E400';
+          if (aqi <= 100) return '#FFFF00';
+          if (aqi <= 150) return '#FF7E00';
+          if (aqi <= 200) return '#FF0000';
+          return '#8F3F97';
+        }),
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    };
+  };
+
+  const heatmapData = createHourlyHeatmapData();
+
+  // Line chart options
+  const lineChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -138,13 +279,13 @@ const DailyDataChart = ({ data, regionName }) => {
           padding: 20,
           font: {
             size: 12,
-            weight: 'bold'
+            weight: '600'
           }
         }
       },
       title: {
         display: true,
-        text: `24-Hour Air Quality Data - ${regionName}`,
+        text: `Environmental Data - ${regionName}`,
         font: {
           size: 18,
           weight: 'bold'
@@ -160,7 +301,7 @@ const DailyDataChart = ({ data, regionName }) => {
         backgroundColor: 'rgba(0, 0, 0, 0.9)',
         titleColor: '#fff',
         bodyColor: '#fff',
-        borderColor: 'rgba(75, 192, 192, 1)',
+        borderColor: '#FF6B6B',
         borderWidth: 1,
         cornerRadius: 8,
         displayColors: true
@@ -171,7 +312,7 @@ const DailyDataChart = ({ data, regionName }) => {
         display: true,
         title: {
           display: true,
-          text: 'Time (Last 24 Hours)',
+          text: `Time (Last ${selectedTimeRange})`,
           font: {
             size: 14,
             weight: 'bold'
@@ -197,7 +338,7 @@ const DailyDataChart = ({ data, regionName }) => {
           color: 'rgba(0, 0, 0, 0.1)'
         },
         min: 0,
-        max: Math.max(...last24Hours.map(item => item.aqi || item.pollution_level || 0)) + 20
+        max: Math.max(...aqiData) + 20
       },
       y1: {
         type: 'linear',
@@ -214,8 +355,8 @@ const DailyDataChart = ({ data, regionName }) => {
         grid: {
           drawOnChartArea: false,
         },
-        min: Math.min(...last24Hours.map(item => item.temperature || 0)) - 5,
-        max: Math.max(...last24Hours.map(item => item.temperature || 0)) + 5
+        min: Math.min(...temperatureData) - 5,
+        max: Math.max(...temperatureData) + 5
       },
       y2: {
         type: 'linear',
@@ -243,12 +384,21 @@ const DailyDataChart = ({ data, regionName }) => {
     }
   };
 
-  const barOptions = {
+  // Bar chart options
+  const barChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: {
+            size: 12,
+            weight: '600'
+          }
+        }
       },
       title: {
         display: true,
@@ -264,28 +414,178 @@ const DailyDataChart = ({ data, regionName }) => {
         beginAtZero: true,
         title: {
           display: true,
-          text: 'Concentration (μg/m³)'
+          text: 'Concentration (μg/m³)',
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
         }
       }
     }
   };
 
-  const getAQIStatus = (aqi) => {
-    if (aqi <= 110) return { status: 'Safe', color: '#00E400', bgColor: '#E8F5E8' };
-    if (aqi <= 200) return { status: 'Moderate', color: '#FFFF00', bgColor: '#FFFFF0' };
-    return { status: 'Bad', color: '#FF0000', bgColor: '#FFE6E6' };
+  // Radar chart options
+  const radarChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: {
+            size: 12,
+            weight: '600'
+          }
+        }
+      },
+      title: {
+        display: true,
+        text: 'Environmental Overview',
+        font: {
+          size: 16,
+          weight: 'bold'
+        }
+      }
+    },
+    scales: {
+      r: {
+        beginAtZero: true,
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)'
+        }
+      }
+    }
   };
 
-  const currentData = last24Hours[last24Hours.length - 1];
+  // Scatter chart options
+  const scatterChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: {
+            size: 12,
+            weight: '600'
+          }
+        }
+      },
+      title: {
+        display: true,
+        text: 'Correlation Analysis',
+        font: {
+          size: 16,
+          weight: 'bold'
+        }
+      }
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: 'Temperature (°C) / Humidity (%)',
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: 'AQI',
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        }
+      }
+    }
+  };
+
+  // Heatmap chart options
+  const heatmapChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: {
+            size: 12,
+            weight: '600'
+          }
+        }
+      },
+      title: {
+        display: true,
+        text: 'Hourly AQI Patterns',
+        font: {
+          size: 16,
+          weight: 'bold'
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Average AQI',
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        }
+      }
+    }
+  };
+
+  // AQI status function
+  const getAQIStatus = (aqi) => {
+    if (aqi <= 50) return { status: 'Good', color: '#00E400', bgColor: '#E8F5E8' };
+    if (aqi <= 100) return { status: 'Moderate', color: '#FFFF00', bgColor: '#FFFFF0' };
+    if (aqi <= 150) return { status: 'Unhealthy for Sensitive Groups', color: '#FF7E00', bgColor: '#FFF4E6' };
+    if (aqi <= 200) return { status: 'Unhealthy', color: '#FF0000', bgColor: '#FFE6E6' };
+    if (aqi <= 300) return { status: 'Very Unhealthy', color: '#8F3F97', bgColor: '#F0E6F0' };
+    return { status: 'Hazardous', color: '#7E0023', bgColor: '#F0E6E6' };
+  };
+
+  const currentData = filteredData[filteredData.length - 1];
   const currentAQI = currentData?.aqi || currentData?.pollution_level || 0;
   const aqiStatus = getAQIStatus(currentAQI);
 
-  // Calculate averages
-  const avgAQI = Math.round(last24Hours.reduce((sum, item) => sum + (item.aqi || item.pollution_level || 0), 0) / last24Hours.length);
-  const avgTemp = Math.round(last24Hours.reduce((sum, item) => sum + (item.temperature || 0), 0) / last24Hours.length);
-  const avgHumidity = Math.round(last24Hours.reduce((sum, item) => sum + (item.humidity || 0), 0) / last24Hours.length);
+  // Calculate statistics
+  const avgAQI = Math.round(aqiData.reduce((sum, val) => sum + val, 0) / aqiData.length);
+  const avgTemp = Math.round(temperatureData.reduce((sum, val) => sum + val, 0) / temperatureData.length);
+  const avgHumidity = Math.round(humidityData.reduce((sum, val) => sum + val, 0) / humidityData.length);
+  const maxAQI = Math.max(...aqiData);
+  const minAQI = Math.min(...aqiData);
+  const maxTemp = Math.max(...temperatureData);
+  const minTemp = Math.min(...temperatureData);
 
-  // Create doughnut chart data for current status
+  // Calculate trends
+  const calculateTrend = (data) => {
+    if (data.length < 2) return 'stable';
+    const recent = data.slice(-3).reduce((sum, val) => sum + val, 0) / 3;
+    const earlier = data.slice(0, 3).reduce((sum, val) => sum + val, 0) / 3;
+    const change = ((recent - earlier) / earlier) * 100;
+    if (change > 5) return 'increasing';
+    if (change < -5) return 'decreasing';
+    return 'stable';
+  };
+
+  const aqiTrend = calculateTrend(aqiData);
+  const tempTrend = calculateTrend(temperatureData);
+
+  // Doughnut chart for current AQI
   const doughnutData = {
     labels: ['Current AQI', 'Remaining'],
     datasets: [
@@ -310,8 +610,52 @@ const DailyDataChart = ({ data, regionName }) => {
     }
   };
 
+  const renderSelectedChart = () => {
+    switch (selectedChart) {
+      case 'line':
+        return <Line data={lineChartData} options={lineChartOptions} />;
+      case 'bar':
+        return <Bar data={barChartData} options={barChartOptions} />;
+      case 'radar':
+        return <Radar data={radarChartData} options={radarChartOptions} />;
+      case 'scatter':
+        return <Scatter data={scatterChartData} options={scatterChartOptions} />;
+      case 'heatmap':
+        return <Bar data={heatmapData} options={heatmapChartOptions} />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="daily-data-chart">
+      {/* Controls */}
+      <div className="chart-controls">
+        <div className="time-range-selector">
+          <label>Time Range:</label>
+          <select value={selectedTimeRange} onChange={(e) => setSelectedTimeRange(e.target.value)}>
+            <option value="6h">Last 6 Hours</option>
+            <option value="12h">Last 12 Hours</option>
+            <option value="24h">Last 24 Hours</option>
+            <option value="48h">Last 48 Hours</option>
+            <option value="7d">Last 7 Days</option>
+          </select>
+        </div>
+        
+        <div className="chart-selector">
+          <label>Chart Type:</label>
+          <select value={selectedChart} onChange={(e) => setSelectedChart(e.target.value)}>
+            <option value="all">All Charts</option>
+            <option value="line">Line Chart</option>
+            <option value="bar">Bar Chart</option>
+            <option value="radar">Radar Chart</option>
+            <option value="scatter">Correlation Analysis</option>
+            <option value="heatmap">Hourly Patterns</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Header with current status */}
       <div className="chart-header">
         <div className="current-status" style={{ backgroundColor: aqiStatus.bgColor, borderColor: aqiStatus.color }}>
           <h3>Current Status: {aqiStatus.status}</h3>
@@ -326,52 +670,104 @@ const DailyDataChart = ({ data, regionName }) => {
               <Doughnut data={doughnutData} options={doughnutOptions} />
             </div>
           </div>
+          <div className="trend-indicator">
+            <span className={`trend ${aqiTrend}`}>
+              {aqiTrend === 'increasing' ? '↗' : aqiTrend === 'decreasing' ? '↘' : '→'} {aqiTrend}
+            </span>
+          </div>
         </div>
         
         <div className="averages-grid">
           <div className="average-card">
-            <h4>24h Average AQI</h4>
+            <h4>Average AQI</h4>
             <p>{avgAQI}</p>
+            <small>{selectedTimeRange} average</small>
           </div>
           <div className="average-card">
-            <h4>24h Average Temp</h4>
+            <h4>Average Temp</h4>
             <p>{avgTemp}°C</p>
+            <small>{selectedTimeRange} average</small>
           </div>
           <div className="average-card">
-            <h4>24h Average Humidity</h4>
+            <h4>Average Humidity</h4>
             <p>{avgHumidity}%</p>
+            <small>{selectedTimeRange} average</small>
           </div>
         </div>
       </div>
 
+      {/* Main charts container */}
       <div className="charts-container">
-        <div className="main-chart">
-          <Line data={chartData} options={options} />
-        </div>
-        
-        <div className="particulate-chart">
-          <Bar data={barData} options={barOptions} />
-        </div>
+        {selectedChart === 'all' ? (
+          <>
+            <div className="main-chart">
+              <Line data={lineChartData} options={lineChartOptions} />
+            </div>
+            
+            <div className="secondary-charts">
+              <div className="particulate-chart">
+                <Bar data={barChartData} options={barChartOptions} />
+              </div>
+              
+              <div className="radar-chart">
+                <Radar data={radarChartData} options={radarChartOptions} />
+              </div>
+              
+              <div className="correlation-chart">
+                <Scatter data={scatterChartData} options={scatterChartOptions} />
+              </div>
+              
+              <div className="heatmap-chart">
+                <Bar data={heatmapData} options={heatmapChartOptions} />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="single-chart">
+            {renderSelectedChart()}
+          </div>
+        )}
       </div>
 
+      {/* Data summary */}
       <div className="data-summary">
         <h4>📊 Data Summary</h4>
         <div className="summary-grid">
           <div className="summary-item">
             <span className="label">Peak AQI:</span>
-            <span className="value">{Math.max(...last24Hours.map(item => item.aqi || item.pollution_level || 0))}</span>
+            <span className="value">{maxAQI}</span>
           </div>
           <div className="summary-item">
             <span className="label">Lowest AQI:</span>
-            <span className="value">{Math.min(...last24Hours.map(item => item.aqi || item.pollution_level || 0))}</span>
+            <span className="value">{minAQI}</span>
           </div>
           <div className="summary-item">
             <span className="label">Max Temperature:</span>
-            <span className="value">{Math.max(...last24Hours.map(item => item.temperature || 0))}°C</span>
+            <span className="value">{maxTemp}°C</span>
           </div>
           <div className="summary-item">
             <span className="label">Min Temperature:</span>
-            <span className="value">{Math.min(...last24Hours.map(item => item.temperature || 0))}°C</span>
+            <span className="value">{minTemp}°C</span>
+          </div>
+          <div className="summary-item">
+            <span className="label">Data Points:</span>
+            <span className="value">{filteredData.length}</span>
+          </div>
+          <div className="summary-item">
+            <span className="label">Time Range:</span>
+            <span className="value">{selectedTimeRange}</span>
+          </div>
+          <div className="summary-item">
+            <span className="label">AQI Trend:</span>
+            <span className={`value trend ${aqiTrend}`}>
+              {aqiTrend === 'increasing' ? '↗' : aqiTrend === 'decreasing' ? '↘' : '→'} {aqiTrend}
+            </span>
+          </div>
+          <div className="summary-item">
+            <span className="label">Temperature Trend:</span>
+            <span className={`value trend ${tempTrend}`}>
+              {tempTrend === 'increasing' ? '↗' : tempTrend === 'decreasing' ? '↘' : '→'} {tempTrend}
+            </span>
           </div>
         </div>
       </div>
