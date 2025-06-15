@@ -23,6 +23,24 @@ ChartJS.register(
   Filler
 );
 
+// Adjusted AQI formula
+function getAdjustedAQI(aqi, temp, humidity) {
+  // Temperature stress
+  let tempStress = 1;
+  if (temp < 15 || temp > 30) tempStress = 1.2;
+  else if ((temp >= 15 && temp < 18) || (temp > 25 && temp <= 30)) tempStress = 1.1;
+
+  // Humidity stress
+  let humidityStress = 1;
+  if (humidity < 30 || humidity > 70) humidityStress = 1.2;
+  else if ((humidity >= 30 && humidity < 40) || (humidity > 60 && humidity <= 70)) humidityStress = 1.1;
+
+  // Environmental Stress Factor
+  const esf = tempStress * humidityStress;
+  // Adjusted AQI
+  return aqi * esf;
+}
+
 const AirQualityChart = ({ data, regionName }) => {
   // Ensure data exists and is an array
   if (!data || !Array.isArray(data) || data.length === 0) {
@@ -47,8 +65,13 @@ const AirQualityChart = ({ data, regionName }) => {
     }),
     datasets: [
       {
-        label: 'Air Quality Index (AQI)',
-        data: data.map(item => item.aqi || item.pollution_level || 0),
+        label: 'Adjusted AQI (Temp & Humidity Weighted)',
+        data: data.map(item => {
+          const aqi = item.aqi || item.pollution_level || 0;
+          const temp = item.temperature || 0;
+          const humidity = item.humidity || 0;
+          return Math.round(getAdjustedAQI(aqi, temp, humidity));
+        }),
         borderColor: 'rgb(75, 192, 192)',
         backgroundColor: 'rgba(75, 192, 192, 0.2)',
         borderWidth: 3,
@@ -138,7 +161,7 @@ const AirQualityChart = ({ data, regionName }) => {
         position: 'left',
         title: {
           display: true,
-          text: 'AQI',
+          text: 'Adjusted AQI',
           font: {
             size: 14,
             weight: 'bold'
@@ -148,7 +171,12 @@ const AirQualityChart = ({ data, regionName }) => {
           color: 'rgba(0, 0, 0, 0.1)'
         },
         min: 0,
-        max: Math.max(...data.map(item => item.aqi || item.pollution_level || 0)) + 20
+        max: Math.max(...data.map(item => {
+          const aqi = item.aqi || item.pollution_level || 0;
+          const temp = item.temperature || 0;
+          const humidity = item.humidity || 0;
+          return Math.round(getAdjustedAQI(aqi, temp, humidity));
+        })) + 20
       },
       y1: {
         type: 'linear',
@@ -176,20 +204,19 @@ const AirQualityChart = ({ data, regionName }) => {
     }
   };
 
-  const getAQIStatus = (aqi) => {
-    if (aqi <= 110) return { status: 'Safe', color: '#00E400' };
-    if (aqi <= 200) return { status: 'Moderate', color: '#FFFF00' };
-    return { status: 'Bad', color: '#FF0000' };
-  };
-
-  const currentAQI = data[data.length - 1]?.aqi || data[data.length - 1]?.pollution_level || 0;
-  const aqiStatus = getAQIStatus(currentAQI);
+  // Calculate current adjusted AQI and status
+  const last = data[data.length - 1] || {};
+  const rawAQI = last.aqi || last.pollution_level || 0;
+  const temp = last.temperature || 0;
+  const humidity = last.humidity || 0;
+  const adjustedAQI = Math.round(getAdjustedAQI(rawAQI, temp, humidity));
+  const isHarmful = adjustedAQI > 110;
 
   return (
     <div className="chart-container">
-      <div className="aqi-status" style={{ backgroundColor: aqiStatus.color + '20', border: `2px solid ${aqiStatus.color}` }}>
-        <h3>Current AQI: {currentAQI}</h3>
-        <p>Status: {aqiStatus.status}</p>
+      <div className="aqi-status" style={{ backgroundColor: (isHarmful ? '#FF000020' : '#E8F5E8'), border: `2px solid ${isHarmful ? '#FF0000' : '#00E400'}` }}>
+        <h3>Current Adjusted AQI: {adjustedAQI}</h3>
+        <p>Status: {isHarmful ? 'Harmful' : 'Not Harmful'} (Temp/Humidity Weighted)</p>
       </div>
       <div style={{ height: '400px', marginTop: '20px' }}>
         <Line data={chartData} options={options} />
