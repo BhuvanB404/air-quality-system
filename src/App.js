@@ -167,9 +167,9 @@ function App() {
         )}
       </main>
 
-      <footer className="App-footer">
+      {/* <footer className="App-footer">
         <p>&copy; 2024 Air Quality Dashboard. Real-time environmental monitoring.</p>
-      </footer>
+      </footer> */}
     </div>
   );
 }
