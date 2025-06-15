@@ -12,10 +12,10 @@ import {
   Filler,
   ArcElement,
   RadialLinearScale,
-  TimeScale
+  BubbleController,
+  PolarAreaController
 } from 'chart.js';
-import { Line, Bar, Doughnut, Radar, Scatter } from 'react-chartjs-2';
-import 'chartjs-adapter-date-fns';
+import { Line, Bar, Doughnut, Radar, Scatter, Bubble, PolarArea } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale,
@@ -29,12 +29,13 @@ ChartJS.register(
   Filler,
   ArcElement,
   RadialLinearScale,
-  TimeScale
+  BubbleController,
+  PolarAreaController
 );
 
 const DailyDataChart = ({ data, regionName }) => {
   const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
-  const [selectedChart, setSelectedChart] = useState('all');
+  const [selectedView, setSelectedView] = useState('overview');
 
   // Ensure data exists and is an array
   if (!data || !Array.isArray(data) || data.length === 0) {
@@ -61,7 +62,7 @@ const DailyDataChart = ({ data, regionName }) => {
       case '48h':
         return data.slice(-48);
       case '7d':
-        return data.slice(-168); // 7 days * 24 hours
+        return data.slice(-168);
     }
   };
 
@@ -73,9 +74,7 @@ const DailyDataChart = ({ data, regionName }) => {
     if (selectedTimeRange === '7d') {
       return date.toLocaleDateString('en-US', { 
         month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        hour12: true 
+        day: 'numeric'
       });
     }
     return date.toLocaleTimeString('en-US', { 
@@ -94,83 +93,106 @@ const DailyDataChart = ({ data, regionName }) => {
   const co2Data = filteredData.map(item => item.co2 || 0);
   const vocData = filteredData.map(item => item.voc || 0);
 
-  // Main line chart configuration
-  const lineChartData = {
-    labels: timeLabels,
+  // Bubble chart for environmental impact
+  const bubbleChartData = {
     datasets: [
       {
-        label: 'Air Quality Index',
-        data: aqiData,
-        borderColor: '#FF6B6B',
-        backgroundColor: 'rgba(255, 107, 107, 0.1)',
-        borderWidth: 3,
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: '#FF6B6B',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        pointHoverRadius: 8,
-        yAxisID: 'y'
-      },
-      {
-        label: 'Temperature (°C)',
-        data: temperatureData,
-        borderColor: '#4ECDC4',
-        backgroundColor: 'rgba(78, 205, 196, 0.1)',
-        borderWidth: 2,
-        fill: false,
-        tension: 0.4,
-        pointBackgroundColor: '#4ECDC4',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        yAxisID: 'y1'
-      },
-      {
-        label: 'Humidity (%)',
-        data: humidityData,
-        borderColor: '#45B7D1',
-        backgroundColor: 'rgba(69, 183, 209, 0.1)',
-        borderWidth: 2,
-        fill: false,
-        tension: 0.4,
-        pointBackgroundColor: '#45B7D1',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        yAxisID: 'y2'
+        label: 'Environmental Impact',
+        data: aqiData.map((aqi, index) => ({
+          x: temperatureData[index] || 0,
+          y: humidityData[index] || 0,
+          r: Math.max(5, (aqi / 10) + 5)
+        })),
+        backgroundColor: aqiData.map(aqi => {
+          if (aqi <= 50) return 'rgba(0, 228, 0, 0.6)';
+          if (aqi <= 100) return 'rgba(255, 255, 0, 0.6)';
+          if (aqi <= 150) return 'rgba(255, 126, 0, 0.6)';
+          if (aqi <= 200) return 'rgba(255, 0, 0, 0.6)';
+          return 'rgba(143, 63, 151, 0.6)';
+        }),
+        borderColor: aqiData.map(aqi => {
+          if (aqi <= 50) return '#00E400';
+          if (aqi <= 100) return '#FFFF00';
+          if (aqi <= 150) return '#FF7E00';
+          if (aqi <= 200) return '#FF0000';
+          return '#8F3F97';
+        }),
+        borderWidth: 2
       }
     ]
   };
 
-  // Bar chart for particulate matter
-  const barChartData = {
+  // Polar area chart for environmental balance
+  const polarAreaData = {
+    labels: ['Air Quality', 'Temperature', 'Humidity', 'PM2.5', 'PM10', 'CO2', 'VOC'],
+    datasets: [
+      {
+        label: 'Environmental Balance',
+        data: [
+          aqiData[aqiData.length - 1] || 0,
+          temperatureData[temperatureData.length - 1] || 0,
+          humidityData[humidityData.length - 1] || 0,
+          pm25Data[pm25Data.length - 1] || 0,
+          pm10Data[pm10Data.length - 1] || 0,
+          co2Data[co2Data.length - 1] || 0,
+          vocData[vocData.length - 1] || 0
+        ],
+        backgroundColor: [
+          'rgba(255, 107, 107, 0.6)',
+          'rgba(78, 205, 196, 0.6)',
+          'rgba(69, 183, 209, 0.6)',
+          'rgba(255, 193, 7, 0.6)',
+          'rgba(156, 39, 176, 0.6)',
+          'rgba(76, 175, 80, 0.6)',
+          'rgba(255, 152, 0, 0.6)'
+        ],
+        borderColor: [
+          '#FF6B6B',
+          '#4ECDC4',
+          '#45B7D1',
+          '#FFC107',
+          '#9C27B0',
+          '#4CAF50',
+          '#FF9800'
+        ],
+        borderWidth: 2
+      }
+    ]
+  };
+
+  // Stacked area chart for cumulative impact
+  const stackedAreaData = {
     labels: timeLabels,
     datasets: [
       {
-        label: 'PM2.5 (μg/m³)',
+        label: 'PM2.5 Impact',
         data: pm25Data,
-        backgroundColor: 'rgba(255, 193, 7, 0.8)',
         borderColor: '#FFC107',
-        borderWidth: 1,
-        borderRadius: 4
+        backgroundColor: 'rgba(255, 193, 7, 0.3)',
+        fill: true,
+        tension: 0.4
       },
       {
-        label: 'PM10 (μg/m³)',
+        label: 'PM10 Impact',
         data: pm10Data,
-        backgroundColor: 'rgba(156, 39, 176, 0.8)',
         borderColor: '#9C27B0',
-        borderWidth: 1,
-        borderRadius: 4
+        backgroundColor: 'rgba(156, 39, 176, 0.3)',
+        fill: true,
+        tension: 0.4
+      },
+      {
+        label: 'CO2 Impact',
+        data: co2Data,
+        borderColor: '#4CAF50',
+        backgroundColor: 'rgba(76, 175, 80, 0.3)',
+        fill: true,
+        tension: 0.4
       }
     ]
   };
 
-  // Radar chart for environmental overview
-  const radarChartData = {
+  // Horizontal bar chart for comparison
+  const horizontalBarData = {
     labels: ['AQI', 'Temperature', 'Humidity', 'PM2.5', 'PM10', 'CO2', 'VOC'],
     datasets: [
       {
@@ -184,91 +206,89 @@ const DailyDataChart = ({ data, regionName }) => {
           co2Data[co2Data.length - 1] || 0,
           vocData[vocData.length - 1] || 0
         ],
-        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-        borderColor: 'rgb(54, 162, 235)',
-        borderWidth: 2,
-        pointBackgroundColor: 'rgb(54, 162, 235)',
-        pointBorderColor: '#fff',
-        pointHoverBackgroundColor: '#fff',
-        pointHoverBorderColor: 'rgb(54, 162, 235)'
-      }
-    ]
-  };
-
-  // Scatter plot for correlation analysis
-  const scatterChartData = {
-    datasets: [
-      {
-        label: 'AQI vs Temperature',
-        data: aqiData.map((aqi, index) => ({
-          x: temperatureData[index] || 0,
-          y: aqi || 0
-        })),
-        backgroundColor: 'rgba(255, 107, 107, 0.6)',
-        borderColor: '#FF6B6B',
-        pointRadius: 6,
-        pointHoverRadius: 8
-      },
-      {
-        label: 'AQI vs Humidity',
-        data: aqiData.map((aqi, index) => ({
-          x: humidityData[index] || 0,
-          y: aqi || 0
-        })),
-        backgroundColor: 'rgba(69, 183, 209, 0.6)',
-        borderColor: '#45B7D1',
-        pointRadius: 6,
-        pointHoverRadius: 8
-      }
-    ]
-  };
-
-  // Heatmap-style data for hourly patterns
-  const createHourlyHeatmapData = () => {
-    const hourlyData = {};
-    filteredData.forEach(item => {
-      const hour = new Date(item.timestamp).getHours();
-      if (!hourlyData[hour]) {
-        hourlyData[hour] = [];
-      }
-      hourlyData[hour].push(item.aqi || item.pollution_level || 0);
-    });
-
-    const heatmapLabels = Object.keys(hourlyData).sort((a, b) => parseInt(a) - parseInt(b));
-    const heatmapData = heatmapLabels.map(hour => {
-      const values = hourlyData[hour];
-      return values.reduce((sum, val) => sum + val, 0) / values.length;
-    });
-
-    return {
-      labels: heatmapLabels.map(hour => `${hour}:00`),
-      datasets: [{
-        label: 'Average AQI by Hour',
-        data: heatmapData,
-        backgroundColor: heatmapData.map(aqi => {
-          if (aqi <= 50) return 'rgba(0, 228, 0, 0.8)';
-          if (aqi <= 100) return 'rgba(255, 255, 0, 0.8)';
-          if (aqi <= 150) return 'rgba(255, 126, 0, 0.8)';
-          if (aqi <= 200) return 'rgba(255, 0, 0, 0.8)';
-          return 'rgba(143, 63, 151, 0.8)';
-        }),
-        borderColor: heatmapData.map(aqi => {
-          if (aqi <= 50) return '#00E400';
-          if (aqi <= 100) return '#FFFF00';
-          if (aqi <= 150) return '#FF7E00';
-          if (aqi <= 200) return '#FF0000';
-          return '#8F3F97';
-        }),
+        backgroundColor: [
+          'rgba(255, 107, 107, 0.8)',
+          'rgba(78, 205, 196, 0.8)',
+          'rgba(69, 183, 209, 0.8)',
+          'rgba(255, 193, 7, 0.8)',
+          'rgba(156, 39, 176, 0.8)',
+          'rgba(76, 175, 80, 0.8)',
+          'rgba(255, 152, 0, 0.8)'
+        ],
+        borderColor: [
+          '#FF6B6B',
+          '#4ECDC4',
+          '#45B7D1',
+          '#FFC107',
+          '#9C27B0',
+          '#4CAF50',
+          '#FF9800'
+        ],
         borderWidth: 1,
         borderRadius: 4
-      }]
+      },
+      {
+        label: 'Average Values',
+        data: [
+          aqiData.reduce((sum, val) => sum + val, 0) / aqiData.length,
+          temperatureData.reduce((sum, val) => sum + val, 0) / temperatureData.length,
+          humidityData.reduce((sum, val) => sum + val, 0) / humidityData.length,
+          pm25Data.reduce((sum, val) => sum + val, 0) / pm25Data.length,
+          pm10Data.reduce((sum, val) => sum + val, 0) / pm10Data.length,
+          co2Data.reduce((sum, val) => sum + val, 0) / co2Data.length,
+          vocData.reduce((sum, val) => sum + val, 0) / vocData.length
+        ],
+        backgroundColor: [
+          'rgba(255, 107, 107, 0.4)',
+          'rgba(78, 205, 196, 0.4)',
+          'rgba(69, 183, 209, 0.4)',
+          'rgba(255, 193, 7, 0.4)',
+          'rgba(156, 39, 176, 0.4)',
+          'rgba(76, 175, 80, 0.4)',
+          'rgba(255, 152, 0, 0.4)'
+        ],
+        borderColor: [
+          '#FF6B6B',
+          '#4ECDC4',
+          '#45B7D1',
+          '#FFC107',
+          '#9C27B0',
+          '#4CAF50',
+          '#FF9800'
+        ],
+        borderWidth: 1,
+        borderRadius: 4
+      }
+    ]
+  };
+
+  // Circular progress chart data
+  const createCircularProgressData = () => {
+    const currentAQI = aqiData[aqiData.length - 1] || 0;
+    const maxAQI = 500;
+    const percentage = (currentAQI / maxAQI) * 100;
+    
+    return {
+      labels: ['Current AQI', 'Remaining'],
+      datasets: [
+        {
+          data: [percentage, 100 - percentage],
+          backgroundColor: [
+            currentAQI <= 50 ? '#00E400' : 
+            currentAQI <= 100 ? '#FFFF00' : 
+            currentAQI <= 150 ? '#FF7E00' : 
+            currentAQI <= 200 ? '#FF0000' : '#8F3F97',
+            '#f0f0f0'
+          ],
+          borderWidth: 0,
+          cutout: '70%'
+        }
+      ]
     };
   };
 
-  const heatmapData = createHourlyHeatmapData();
-
-  // Line chart options
-  const lineChartOptions = {
+  // Bubble chart options
+  const bubbleChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -277,115 +297,48 @@ const DailyDataChart = ({ data, regionName }) => {
         labels: {
           usePointStyle: true,
           padding: 20,
-          font: {
-            size: 12,
-            weight: '600'
-          }
+          font: { size: 12, weight: '600' }
         }
       },
       title: {
         display: true,
-        text: `Environmental Data - ${regionName}`,
-        font: {
-          size: 18,
-          weight: 'bold'
-        },
-        padding: {
-          top: 10,
-          bottom: 30
-        }
+        text: 'Environmental Impact Bubble Map',
+        font: { size: 18, weight: 'bold' },
+        padding: { top: 10, bottom: 30 }
       },
       tooltip: {
-        mode: 'index',
-        intersect: false,
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-        titleColor: '#fff',
-        bodyColor: '#fff',
-        borderColor: '#FF6B6B',
-        borderWidth: 1,
-        cornerRadius: 8,
-        displayColors: true
+        callbacks: {
+          label: function(context) {
+            const index = context.dataIndex;
+            return [
+              `AQI: ${aqiData[index]}`,
+              `Temperature: ${temperatureData[index]}°C`,
+              `Humidity: ${humidityData[index]}%`
+            ];
+          }
+        }
       }
     },
     scales: {
       x: {
-        display: true,
-        title: {
-          display: true,
-          text: `Time (Last ${selectedTimeRange})`,
-          font: {
-            size: 14,
-            weight: 'bold'
-          }
-        },
-        grid: {
-          color: 'rgba(0, 0, 0, 0.1)'
-        }
-      },
-      y: {
-        type: 'linear',
-        display: true,
-        position: 'left',
-        title: {
-          display: true,
-          text: 'AQI',
-          font: {
-            size: 14,
-            weight: 'bold'
-          }
-        },
-        grid: {
-          color: 'rgba(0, 0, 0, 0.1)'
-        },
-        min: 0,
-        max: Math.max(...aqiData) + 20
-      },
-      y1: {
-        type: 'linear',
-        display: true,
-        position: 'right',
         title: {
           display: true,
           text: 'Temperature (°C)',
-          font: {
-            size: 14,
-            weight: 'bold'
-          }
-        },
-        grid: {
-          drawOnChartArea: false,
-        },
-        min: Math.min(...temperatureData) - 5,
-        max: Math.max(...temperatureData) + 5
+          font: { size: 14, weight: 'bold' }
+        }
       },
-      y2: {
-        type: 'linear',
-        display: true,
-        position: 'right',
+      y: {
         title: {
           display: true,
           text: 'Humidity (%)',
-          font: {
-            size: 14,
-            weight: 'bold'
-          }
-        },
-        grid: {
-          drawOnChartArea: false,
-        },
-        min: 0,
-        max: 100
+          font: { size: 14, weight: 'bold' }
+        }
       }
-    },
-    interaction: {
-      mode: 'nearest',
-      axis: 'x',
-      intersect: false
     }
   };
 
-  // Bar chart options
-  const barChartOptions = {
+  // Polar area chart options
+  const polarAreaOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -394,38 +347,20 @@ const DailyDataChart = ({ data, regionName }) => {
         labels: {
           usePointStyle: true,
           padding: 20,
-          font: {
-            size: 12,
-            weight: '600'
-          }
+          font: { size: 12, weight: '600' }
         }
       },
       title: {
         display: true,
-        text: 'Particulate Matter Levels',
-        font: {
-          size: 16,
-          weight: 'bold'
-        }
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Concentration (μg/m³)',
-          font: {
-            size: 14,
-            weight: 'bold'
-          }
-        }
+        text: 'Environmental Balance Overview',
+        font: { size: 18, weight: 'bold' },
+        padding: { top: 10, bottom: 30 }
       }
     }
   };
 
-  // Radar chart options
-  const radarChartOptions = {
+  // Stacked area chart options
+  const stackedAreaOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -434,116 +369,73 @@ const DailyDataChart = ({ data, regionName }) => {
         labels: {
           usePointStyle: true,
           padding: 20,
-          font: {
-            size: 12,
-            weight: '600'
-          }
+          font: { size: 12, weight: '600' }
         }
       },
       title: {
         display: true,
-        text: 'Environmental Overview',
-        font: {
-          size: 16,
-          weight: 'bold'
-        }
-      }
-    },
-    scales: {
-      r: {
-        beginAtZero: true,
-        grid: {
-          color: 'rgba(0, 0, 0, 0.1)'
-        }
-      }
-    }
-  };
-
-  // Scatter chart options
-  const scatterChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top',
-        labels: {
-          usePointStyle: true,
-          padding: 20,
-          font: {
-            size: 12,
-            weight: '600'
-          }
-        }
-      },
-      title: {
-        display: true,
-        text: 'Correlation Analysis',
-        font: {
-          size: 16,
-          weight: 'bold'
-        }
+        text: 'Cumulative Environmental Impact',
+        font: { size: 18, weight: 'bold' },
+        padding: { top: 10, bottom: 30 }
       }
     },
     scales: {
       x: {
         title: {
           display: true,
-          text: 'Temperature (°C) / Humidity (%)',
-          font: {
-            size: 14,
-            weight: 'bold'
-          }
+          text: `Time (Last ${selectedTimeRange})`,
+          font: { size: 14, weight: 'bold' }
         }
       },
       y: {
         title: {
           display: true,
-          text: 'AQI',
-          font: {
-            size: 14,
-            weight: 'bold'
-          }
+          text: 'Impact Level',
+          font: { size: 14, weight: 'bold' }
         }
       }
     }
   };
 
-  // Heatmap chart options
-  const heatmapChartOptions = {
+  // Horizontal bar chart options
+  const horizontalBarOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    indexAxis: 'y',
     plugins: {
       legend: {
         position: 'top',
         labels: {
           usePointStyle: true,
           padding: 20,
-          font: {
-            size: 12,
-            weight: '600'
-          }
+          font: { size: 12, weight: '600' }
         }
       },
       title: {
         display: true,
-        text: 'Hourly AQI Patterns',
-        font: {
-          size: 16,
-          weight: 'bold'
-        }
+        text: 'Environmental Parameters Comparison',
+        font: { size: 18, weight: 'bold' },
+        padding: { top: 10, bottom: 30 }
       }
     },
     scales: {
-      y: {
-        beginAtZero: true,
+      x: {
         title: {
           display: true,
-          text: 'Average AQI',
-          font: {
-            size: 14,
-            weight: 'bold'
-          }
+          text: 'Value',
+          font: { size: 14, weight: 'bold' }
         }
+      }
+    }
+  };
+
+  // Circular progress options
+  const circularProgressOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
       }
     }
   };
@@ -564,64 +456,29 @@ const DailyDataChart = ({ data, regionName }) => {
 
   // Calculate statistics
   const avgAQI = Math.round(aqiData.reduce((sum, val) => sum + val, 0) / aqiData.length);
-  const avgTemp = Math.round(temperatureData.reduce((sum, val) => sum + val, 0) / temperatureData.length);
-  const avgHumidity = Math.round(humidityData.reduce((sum, val) => sum + val, 0) / humidityData.length);
   const maxAQI = Math.max(...aqiData);
   const minAQI = Math.min(...aqiData);
-  const maxTemp = Math.max(...temperatureData);
-  const minTemp = Math.min(...temperatureData);
 
-  // Calculate trends
-  const calculateTrend = (data) => {
-    if (data.length < 2) return 'stable';
-    const recent = data.slice(-3).reduce((sum, val) => sum + val, 0) / 3;
-    const earlier = data.slice(0, 3).reduce((sum, val) => sum + val, 0) / 3;
-    const change = ((recent - earlier) / earlier) * 100;
-    if (change > 5) return 'increasing';
-    if (change < -5) return 'decreasing';
-    return 'stable';
+  // Calculate environmental score
+  const calculateEnvironmentalScore = () => {
+    const aqiScore = Math.max(0, 100 - (currentAQI / 5));
+    const tempScore = Math.max(0, 100 - Math.abs(temperatureData[temperatureData.length - 1] - 22) * 2);
+    const humidityScore = Math.max(0, 100 - Math.abs(humidityData[humidityData.length - 1] - 50) * 1.5);
+    return Math.round((aqiScore + tempScore + humidityScore) / 3);
   };
 
-  const aqiTrend = calculateTrend(aqiData);
-  const tempTrend = calculateTrend(temperatureData);
+  const environmentalScore = calculateEnvironmentalScore();
 
-  // Doughnut chart for current AQI
-  const doughnutData = {
-    labels: ['Current AQI', 'Remaining'],
-    datasets: [
-      {
-        data: [currentAQI, Math.max(0, 500 - currentAQI)],
-        backgroundColor: [
-          aqiStatus.color,
-          '#f0f0f0'
-        ],
-        borderWidth: 0
-      }
-    ]
-  };
-
-  const doughnutOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false
-      }
-    }
-  };
-
-  const renderSelectedChart = () => {
-    switch (selectedChart) {
-      case 'line':
-        return <Line data={lineChartData} options={lineChartOptions} />;
-      case 'bar':
-        return <Bar data={barChartData} options={barChartOptions} />;
-      case 'radar':
-        return <Radar data={radarChartData} options={radarChartOptions} />;
-      case 'scatter':
-        return <Scatter data={scatterChartData} options={scatterChartOptions} />;
-      case 'heatmap':
-        return <Bar data={heatmapData} options={heatmapChartOptions} />;
+  const renderSelectedView = () => {
+    switch (selectedView) {
+      case 'bubble':
+        return <Bubble data={bubbleChartData} options={bubbleChartOptions} />;
+      case 'polar':
+        return <PolarArea data={polarAreaData} options={polarAreaOptions} />;
+      case 'stacked':
+        return <Line data={stackedAreaData} options={stackedAreaOptions} />;
+      case 'comparison':
+        return <Bar data={horizontalBarData} options={horizontalBarOptions} />;
       default:
         return null;
     }
@@ -642,15 +499,14 @@ const DailyDataChart = ({ data, regionName }) => {
           </select>
         </div>
         
-        <div className="chart-selector">
-          <label>Chart Type:</label>
-          <select value={selectedChart} onChange={(e) => setSelectedChart(e.target.value)}>
-            <option value="all">All Charts</option>
-            <option value="line">Line Chart</option>
-            <option value="bar">Bar Chart</option>
-            <option value="radar">Radar Chart</option>
-            <option value="scatter">Correlation Analysis</option>
-            <option value="heatmap">Hourly Patterns</option>
+        <div className="view-selector">
+          <label>View Type:</label>
+          <select value={selectedView} onChange={(e) => setSelectedView(e.target.value)}>
+            <option value="overview">Overview</option>
+            <option value="bubble">Impact Bubble Map</option>
+            <option value="polar">Environmental Balance</option>
+            <option value="stacked">Cumulative Impact</option>
+            <option value="comparison">Parameters Comparison</option>
           </select>
         </div>
       </div>
@@ -666,73 +522,59 @@ const DailyDataChart = ({ data, regionName }) => {
               </span>
               <span className="aqi-label">AQI</span>
             </div>
-            <div className="doughnut-chart">
-              <Doughnut data={doughnutData} options={doughnutOptions} />
+            <div className="circular-progress">
+              <Doughnut data={createCircularProgressData()} options={circularProgressOptions} />
             </div>
-          </div>
-          <div className="trend-indicator">
-            <span className={`trend ${aqiTrend}`}>
-              {aqiTrend === 'increasing' ? '↗' : aqiTrend === 'decreasing' ? '↘' : '→'} {aqiTrend}
-            </span>
           </div>
         </div>
         
-        <div className="averages-grid">
-          <div className="average-card">
-            <h4>Average AQI</h4>
-            <p>{avgAQI}</p>
-            <small>{selectedTimeRange} average</small>
-          </div>
-          <div className="average-card">
-            <h4>Average Temp</h4>
-            <p>{avgTemp}°C</p>
-            <small>{selectedTimeRange} average</small>
-          </div>
-          <div className="average-card">
-            <h4>Average Humidity</h4>
-            <p>{avgHumidity}%</p>
-            <small>{selectedTimeRange} average</small>
+        <div className="environmental-score">
+          <div className="score-card">
+            <h4>Environmental Score</h4>
+            <div className="score-value" style={{ 
+              color: environmentalScore >= 80 ? '#00E400' : 
+                     environmentalScore >= 60 ? '#FFFF00' : 
+                     environmentalScore >= 40 ? '#FF7E00' : '#FF0000' 
+            }}>
+              {environmentalScore}/100
+            </div>
+            <small>Overall environmental health</small>
           </div>
         </div>
       </div>
 
       {/* Main charts container */}
       <div className="charts-container">
-        {selectedChart === 'all' ? (
-          <>
-            <div className="main-chart">
-              <Line data={lineChartData} options={lineChartOptions} />
+        {selectedView === 'overview' ? (
+          <div className="overview-grid">
+            <div className="chart-item">
+              <Bubble data={bubbleChartData} options={bubbleChartOptions} />
             </div>
-            
-            <div className="secondary-charts">
-              <div className="particulate-chart">
-                <Bar data={barChartData} options={barChartOptions} />
-              </div>
-              
-              <div className="radar-chart">
-                <Radar data={radarChartData} options={radarChartOptions} />
-              </div>
-              
-              <div className="correlation-chart">
-                <Scatter data={scatterChartData} options={scatterChartOptions} />
-              </div>
-              
-              <div className="heatmap-chart">
-                <Bar data={heatmapData} options={heatmapChartOptions} />
-              </div>
+            <div className="chart-item">
+              <PolarArea data={polarAreaData} options={polarAreaOptions} />
             </div>
-          </>
+            <div className="chart-item">
+              <Line data={stackedAreaData} options={stackedAreaOptions} />
+            </div>
+            <div className="chart-item">
+              <Bar data={horizontalBarData} options={horizontalBarOptions} />
+            </div>
+          </div>
         ) : (
           <div className="single-chart">
-            {renderSelectedChart()}
+            {renderSelectedView()}
           </div>
         )}
       </div>
 
       {/* Data summary */}
       <div className="data-summary">
-        <h4>📊 Data Summary</h4>
+        <h4>🌍 Environmental Insights</h4>
         <div className="summary-grid">
+          <div className="summary-item">
+            <span className="label">Current AQI:</span>
+            <span className="value">{currentAQI}</span>
+          </div>
           <div className="summary-item">
             <span className="label">Peak AQI:</span>
             <span className="value">{maxAQI}</span>
@@ -742,32 +584,16 @@ const DailyDataChart = ({ data, regionName }) => {
             <span className="value">{minAQI}</span>
           </div>
           <div className="summary-item">
-            <span className="label">Max Temperature:</span>
-            <span className="value">{maxTemp}°C</span>
+            <span className="label">Average AQI:</span>
+            <span className="value">{avgAQI}</span>
           </div>
           <div className="summary-item">
-            <span className="label">Min Temperature:</span>
-            <span className="value">{minTemp}°C</span>
+            <span className="label">Environmental Score:</span>
+            <span className="value">{environmentalScore}/100</span>
           </div>
           <div className="summary-item">
             <span className="label">Data Points:</span>
             <span className="value">{filteredData.length}</span>
-          </div>
-          <div className="summary-item">
-            <span className="label">Time Range:</span>
-            <span className="value">{selectedTimeRange}</span>
-          </div>
-          <div className="summary-item">
-            <span className="label">AQI Trend:</span>
-            <span className={`value trend ${aqiTrend}`}>
-              {aqiTrend === 'increasing' ? '↗' : aqiTrend === 'decreasing' ? '↘' : '→'} {aqiTrend}
-            </span>
-          </div>
-          <div className="summary-item">
-            <span className="label">Temperature Trend:</span>
-            <span className={`value trend ${tempTrend}`}>
-              {tempTrend === 'increasing' ? '↗' : tempTrend === 'decreasing' ? '↘' : '→'} {tempTrend}
-            </span>
           </div>
         </div>
       </div>
