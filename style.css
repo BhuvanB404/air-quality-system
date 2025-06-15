@@ -1,0 +1,43 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #f4f4f4;
+}
+header {
+  background: #2b6777;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+}
+nav {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  background: #c8d8e4;
+  padding: 0.5rem;
+}
+section {
+  padding: 2rem;
+}
+.cards {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.card {
+  background: white;
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  min-width: 150px;
+  text-align: center;
+}
+#map {
+  height: 400px;
+  margin-top: 1rem;
+}
+canvas {
+  margin-top: 2rem;
+}

@@ -1,0 +1,148 @@
+<!-- Save as index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Air Quality Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <link rel="icon" href="data:,">
+  <style>
+    body { font-family: sans-serif; margin: 0; background: #f0f0f0; }
+    header { background: #0066cc; color: white; padding: 1rem; text-align: center; }
+    nav { background: #dbeeff; padding: 1rem; text-align: center; }
+    section { padding: 2rem; }
+    .cards { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .card {
+      background: white; padding: 1rem; border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 200px;
+      text-align: center;
+    }
+    #map { height: 400px; margin-top: 1rem; }
+    /* canvas { max-width: 600px; margin: 2rem auto; display: block; }
+     */
+     canvas {
+  width: 100% !important;
+  max-width: 1000px;
+  height: 400px !important;
+  margin: 2rem auto;
+  display: block;
+}
+
+  </style>
+</head>
+<body>
+
+  <header><h1>Air Quality Dashboard</h1></header>
+  <nav>
+    <a href="#status">Status</a> |
+    <a href="#heatmap">Heatmap</a> |
+    <a href="#trend">Trend</a>
+  </nav>
+
+  <section id="status">
+    <h2>Live Sensor Data</h2>
+    <div class="cards">
+      <div class="card" id="tempCard">Temperature: -- °C</div>
+      <div class="card" id="humidityCard">Humidity: -- %</div>
+      <div class="card" id="airQualityCard">Air Quality: --</div>
+      <div class="card" id="pollutionCard">Pollution Level: --</div>
+      <div class="card" id="gasCard">Gas Detected: --</div>
+    </div>
+    <canvas id="pollutionChart"></canvas>
+  </section>
+
+  <section id="heatmap">
+    <h2>Pollution Heatmap</h2>
+    <div id="map"></div>
+  </section>
+
+  <section id="trend">
+    <h2>Predicted Trend</h2>
+    <canvas id="trendChart"></canvas>
+  </section>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyACTawCyIJ2ULCLXTJrnjGBN_LeuQqWmcw",
+      authDomain: "air-quality-13c25.firebaseapp.com",
+      databaseURL: "https://air-quality-13c25-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "air-quality-13c25",
+      storageBucket: "air-quality-13c25.appspot.com",
+      messagingSenderId: "212146084531",
+      appId: "1:212146084531:web:959672c67ccaf07bb7aec6",
+      measurementId: "G-CZGJHEE8S8"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const pollutionChart = new Chart(document.getElementById("pollutionChart"), {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "Pollution Level",
+          data: [],
+          borderColor: "red",
+          fill: false
+        }]
+      }
+    });
+
+    const readingsRef = ref(db, "sensor_readings");
+    onValue(readingsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      const sortedKeys = Object.keys(data).sort((a, b) =>
+        data[a].reading_number - data[b].reading_number
+      );
+      const latest = data[sortedKeys.at(-1)];
+
+      document.getElementById("tempCard").innerText = `Temperature: ${latest.temperature} °C`;
+      document.getElementById("humidityCard").innerText = `Humidity: ${latest.humidity} %`;
+      document.getElementById("airQualityCard").innerText = `Air Quality: ${latest.air_quality}`;
+      document.getElementById("pollutionCard").innerText = `Pollution Level: ${latest.pollution_level}`;
+      document.getElementById("gasCard").innerText = `Gas Detected: ${latest.gas_detected ? "Yes" : "No"}`;
+
+      const chart = pollutionChart;
+      const timestamp = `T${latest.timestamp}`;
+      chart.data.labels.push(timestamp);
+      chart.data.datasets[0].data.push(latest.pollution_level);
+      if (chart.data.labels.length > 10) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+      chart.update();
+    });
+
+    // Leaflet map setup
+    const map = L.map('map').setView([15.3173, 75.7139], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    L.circle([15.3173, 75.7139], {
+      radius: 500,
+      color: 'red'
+    }).addTo(map).bindPopup("High pollution zone");
+
+    new Chart(document.getElementById("trendChart"), {
+      type: "line",
+      data: {
+        labels: ["6AM", "9AM", "12PM", "3PM", "6PM", "9PM"],
+        datasets: [{
+          label: "Predicted AQI",
+          data: [60, 75, 95, 110, 80, 65],
+          borderColor: "blue",
+          fill: false
+        }]
+      }
+    });
+  </script>
+</body>
+</html>
