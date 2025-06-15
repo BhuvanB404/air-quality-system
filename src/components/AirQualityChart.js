@@ -10,6 +10,7 @@ import {
   Legend,
   Filler
 } from 'chart.js';
+import annotationPlugin from 'chartjs-plugin-annotation';
 import { Line } from 'react-chartjs-2';
 
 ChartJS.register(
@@ -20,7 +21,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  annotationPlugin
 );
 
 // Adjusted AQI formula
@@ -107,22 +109,25 @@ const AirQualityChart = ({ data, regionName }) => {
     plugins: {
       legend: {
         position: 'top',
+        align: 'start',
         labels: {
           usePointStyle: true,
-          padding: 20,
+          padding: 24,
           font: {
-            size: 12,
+            size: 15,
             weight: 'bold'
-          }
+          },
+          color: '#222'
         }
       },
       title: {
         display: true,
         text: `Air Quality Data - ${regionName}`,
         font: {
-          size: 18,
+          size: 20,
           weight: 'bold'
         },
+        color: '#222',
         padding: {
           top: 10,
           bottom: 30
@@ -131,13 +136,37 @@ const AirQualityChart = ({ data, regionName }) => {
       tooltip: {
         mode: 'index',
         intersect: false,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: '#222',
         titleColor: '#fff',
         bodyColor: '#fff',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1,
-        cornerRadius: 8,
-        displayColors: true
+        borderColor: '#007AFF',
+        borderWidth: 2,
+        cornerRadius: 10,
+        displayColors: true,
+        padding: 14,
+        callbacks: {
+          label: function(context) {
+            return `${context.dataset.label}: ${context.parsed.y}`;
+          }
+        }
+      },
+      annotation: {
+        annotations: {
+          harmfulZone: {
+            type: 'box',
+            yMin: 110,
+            yMax: Math.max(...data.map(item => {
+              const aqi = item.aqi || item.pollution_level || 0;
+              const temp = item.temperature || 0;
+              const humidity = item.humidity || 0;
+              return Math.round(getAdjustedAQI(aqi, temp, humidity));
+            })) + 20,
+            backgroundColor: 'rgba(255, 59, 48, 0.07)',
+            borderWidth: 0,
+            xMin: 0,
+            xMax: data.length - 1
+          }
+        }
       }
     },
     scales: {
