@@ -581,17 +581,31 @@
 }
 
 .charts-container {
-  display: grid;
-  gap: 2rem;
-  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  width: 100%;
+  overflow: visible;
 }
 
 .main-chart {
-  height: 400px;
+  height: 350px;
+  min-height: 300px;
+  max-height: 400px;
+  background: #eaf6fa;
+  border-radius: 12px;
+  padding: 20px 10px 10px 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  overflow: hidden;
 }
 
 .particulate-chart {
-  height: 300px;
+  height: 250px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px 10px 10px 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  overflow: hidden;
 }
 
 .data-summary {
@@ -1232,4 +1246,16 @@ section h2 {
   padding: 20px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   margin: 20px 0;
+}
+
+@media (max-width: 900px) {
+  .main-chart, .particulate-chart {
+    height: 250px;
+    min-height: 180px;
+    max-height: 300px;
+    padding: 10px 2px 2px 2px;
+  }
+  .charts-container {
+    gap: 15px;
+  }
 } 
