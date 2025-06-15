@@ -84,8 +84,8 @@ const AirQualityChart = ({ data, regionName }) => {
         pointHoverRadius: 8
       },
       {
-        label: 'Temperature (°C)',
-        data: data.map(item => item.temperature || 0),
+        label: 'Raw AQI',
+        data: data.map(item => item.aqi || item.pollution_level || 0),
         borderColor: 'rgb(255, 99, 132)',
         backgroundColor: 'rgba(255, 99, 132, 0.1)',
         borderWidth: 2,
@@ -184,7 +184,7 @@ const AirQualityChart = ({ data, regionName }) => {
         position: 'right',
         title: {
           display: true,
-          text: 'Temperature (°C)',
+          text: 'Raw AQI',
           font: {
             size: 14,
             weight: 'bold'
@@ -193,8 +193,8 @@ const AirQualityChart = ({ data, regionName }) => {
         grid: {
           drawOnChartArea: false,
         },
-        min: Math.min(...data.map(item => item.temperature || 0)) - 5,
-        max: Math.max(...data.map(item => item.temperature || 0)) + 5
+        min: Math.min(...data.map(item => item.aqi || item.pollution_level || 0)) - 5,
+        max: Math.max(...data.map(item => item.aqi || item.pollution_level || 0)) + 5
       }
     },
     interaction: {
