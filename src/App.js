@@ -4,7 +4,6 @@ import InteractiveMap from './components/InteractiveMap';
 import AirQualityChart from './components/AirQualityChart';
 import DailyDataChart from './components/DailyDataChart';
 import LiveDataCards from './components/LiveDataCards';
-import AirQualityScore from './components/AirQualityScore';
 import AdminPanel from './components/AdminPanel';
 import { getRegionData, getAllRegionsFromFirebase } from './firebase';
 
@@ -84,10 +83,6 @@ function App() {
       <main className="App-main">
         <section className="live-data-section">
           <LiveDataCards />
-        </section>
-
-        <section className="air-quality-score-section">
-          <AirQualityScore />
         </section>
 
         <section className="map-section">

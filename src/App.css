@@ -501,9 +501,10 @@
 /* Daily Data Chart Styles */
 .daily-data-chart {
   background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin: 20px 0;
 }
 
 .chart-header {
@@ -581,6 +582,7 @@
 }
 
 .charts-container {
+  background: white;
   display: flex;
   flex-direction: column;
   gap: 30px;
@@ -592,7 +594,7 @@
   height: 350px;
   min-height: 300px;
   max-height: 400px;
-  background: #eaf6fa;
+  background: white;
   border-radius: 12px;
   padding: 20px 10px 10px 10px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -601,7 +603,7 @@
 
 .particulate-chart {
   height: 250px;
-  background: #f8f9fa;
+  background: white;
   border-radius: 12px;
   padding: 20px 10px 10px 10px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
