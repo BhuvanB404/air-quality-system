@@ -13,12 +13,9 @@ const LiveDataCards = () => {
   }, []);
 
   const getAQIStatus = (aqi) => {
-    if (aqi <= 50) return { status: 'Good', color: '#00E400', bgColor: '#E8F5E8' };
-    if (aqi <= 100) return { status: 'Moderate', color: '#FFFF00', bgColor: '#FFFFF0' };
-    if (aqi <= 150) return { status: 'Unhealthy for Sensitive Groups', color: '#FF7E00', bgColor: '#FFF4E6' };
-    if (aqi <= 200) return { status: 'Unhealthy', color: '#FF0000', bgColor: '#FFE6E6' };
-    if (aqi <= 300) return { status: 'Very Unhealthy', color: '#8F3F97', bgColor: '#F0E6F0' };
-    return { status: 'Hazardous', color: '#7E0023', bgColor: '#F0E6E6' };
+    if (aqi <= 110) return { status: 'Safe', color: '#00E400', bgColor: '#E8F5E8' };
+    if (aqi <= 200) return { status: 'Moderate', color: '#FFFF00', bgColor: '#FFFFF0' };
+    return { status: 'Bad', color: '#FF0000', bgColor: '#FFE6E6' };
   };
 
   const getGasStatus = (gasDetected) => {
@@ -105,7 +102,7 @@ const LiveDataCards = () => {
           <div className="card-content">
             <h3>Last Updated</h3>
             <p className="card-value">
-              {new Date(liveData.timestamp).toLocaleTimeString()}
+              {new Date().toLocaleTimeString()}
             </p>
             <p className="card-description">Real-time data</p>
           </div>
