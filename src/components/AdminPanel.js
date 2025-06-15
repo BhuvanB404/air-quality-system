@@ -37,7 +37,6 @@ const AdminPanel = ({ onClose, onLocationAdded }) => {
     description: ''
   });
   const [existingRegions, setExistingRegions] = useState([]);
-  const [isAddingLocation, setIsAddingLocation] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -64,7 +63,6 @@ const AdminPanel = ({ onClose, onLocationAdded }) => {
       ...prev,
       coordinates: coordinates
     }));
-    setIsAddingLocation(true);
   };
 
   const handleAddLocation = async () => {
@@ -101,7 +99,6 @@ const AdminPanel = ({ onClose, onLocationAdded }) => {
         coordinates: null,
         description: ''
       });
-      setIsAddingLocation(false);
       setSelectedLocation(null);
       
       // Clear success message after 3 seconds

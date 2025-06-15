@@ -61,10 +61,6 @@ function App() {
     setShowAdmin(!showAdmin);
   };
 
-  const toggleViewMode = () => {
-    setViewMode(viewMode === 'daily' ? 'trend' : 'daily');
-  };
-
   return (
     <div className="App">
       <header className="App-header">
